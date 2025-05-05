@@ -1,0 +1,21 @@
+{
+    "extensions.ignoreRecommendations": true,
+    "C_Cpp.default.configurationProvider": "particle.particle-vscode-core",
+    "files.associations": {
+        "*.ino": "cpp",
+        "chrono": "cpp",
+        "format": "cpp",
+        "forward_list": "cpp",
+        "initializer_list": "cpp",
+        "vector": "cpp",
+        "xstring": "cpp",
+        "xutility": "cpp",
+        "list": "cpp",
+        "xhash": "cpp",
+        "xlocinfo": "cpp",
+        "xlocale": "cpp"
+    },
+    "particle.firmwareVersion": "5.6.0",
+    "particle.targetPlatform": "p2",
+    "particle.targetDevice": ""
+}
