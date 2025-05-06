@@ -24,12 +24,12 @@
  
  // Constants
  const unsigned long MAX_RECORDING_LENGTH_MS = 5000; // 5000; max 5 seconds
- const int SAMPLING_INTERVAL_MS = 10;                 // Sampling interval in milliseconds
+ const int SAMPLING_INTERVAL_MS = 3;                 // Sampling interval in milliseconds
  const int BUFFER_SIZE = 25;                          // Buffer size
  const int TRANSMIT_THRESHOLD = 20;                   // Transmit buffer after 20 samples
  
  // Server configuration
- IPAddress serverAddr = IPAddress(192, 168, 132, 254);
+ IPAddress serverAddr = IPAddress(192, 168, 73, 254);
  int serverPort = 7123;
  
  TCPClient client;
@@ -38,8 +38,8 @@
  struct Sample
  {
    uint32_t timestamp; // Timestamp in microseconds
-   float accX,accY,accZ,gyroX,gyroY,gyroZ,magX,magY,magZ;      // Accelerometer data
- };
+   float quatI, quatJ, quatK, quatReal;      // BNO085 data
+ }; 
  
  Sample buffer1[BUFFER_SIZE];
  Sample buffer2[BUFFER_SIZE];
@@ -47,7 +47,7 @@
  Sample *transmitBuffer = buffer2;
  volatile int samplingIndex = 0;
  volatile bool bufferReady = false;
- 
+
  // BNO085 accelerometer
  BNO080 IMU;
  
@@ -62,7 +62,8 @@ enum SampleType
 {
    RIGHT,
    LEFT,
-   BREAK
+   BREAK,
+   STRAIGHT
  };
  SampleType sampleType = RIGHT;
 
@@ -81,7 +82,7 @@ enum SampleType
  
  #define LED_PIN D7
  
- void readData(float *accX, float *accY, float *accZ, float *gyroX, float *gyroY, float *gyroZ, float *magX, float *magY, float *magZ);
+ void readData(float *quatI, float *quatJ, float *quatK, float *quatReal);
 
  void changeState();
  void rightButtonHandler();
@@ -97,9 +98,9 @@ enum SampleType
     pinMode(leftButton, INPUT_PULLUP);
     pinMode(breakButton, INPUT_PULLUP);
 
-    attachInterrupt(rightButton, rightButtonHandler, FALLING);
-    attachInterrupt(leftButton, leftButtonHandler, FALLING);
-    attachInterrupt(breakButton, breakButtonHandler, FALLING);
+    attachInterrupt(rightButton, rightButtonHandler, FALLING); // Trigger on falling edge
+    attachInterrupt(leftButton, leftButtonHandler, FALLING); // Trigger on falling edge
+    attachInterrupt(breakButton, breakButtonHandler, FALLING); // Trigger on falling edge
 
    Particle.connect();
    System.on(button_click, buttonHandler);
@@ -116,9 +117,11 @@ enum SampleType
  
    Wire.setClock(400000); //Increase I2C data rate to 400kHz
  
-   IMU.enableAccelerometer(10); //Send data update every 10ms / 100Hz
-   IMU.enableGyro(10);         //Send data update every 10ms / 100Hz
-   IMU.enableMagnetometer(10); //Send data update every 10ms / 100Hz
+   IMU.enableRotationVector(SAMPLING_INTERVAL_MS); //Send data update every 3ms 333Hz
+
+  //  IMU.enableAccelerometer(10); //Send data update every 10ms / 100Hz
+  //  IMU.enableGyro(10);         //Send data update every 10ms / 100Hz
+  //  IMU.enableMagnetometer(10); //Send data update every 10ms / 100Hz
   
    pinMode(LED_PIN, OUTPUT);
    digitalWrite(LED_PIN, LOW);
@@ -149,6 +152,9 @@ enum SampleType
             break;
           case BREAK:
             data = String::format("Break\n");
+            break;
+          case STRAIGHT:
+            data = String::format("Straight\n");
             break;
        }
        client.write(((const uint8_t *)data.c_str()), data.length());
@@ -191,7 +197,7 @@ enum SampleType
      break;
  
    case STATE_FINISH:
-     samplingTimer.stop();
+    samplingTimer.stop();
      if (samplingIndex > 0)
      {
        bufferReady = true;
@@ -207,35 +213,30 @@ enum SampleType
  
  void sampleIMU()
  {
-   if (samplingIndex < BUFFER_SIZE)
-   {
-        while(IMU.dataAvailable() != true);
-        // Sample accelerometer
-        float accX,accY,accZ,gyroX,gyroY,gyroZ,magX,magY,magZ;
+    if (samplingIndex < BUFFER_SIZE)
+    {
+          while(IMU.dataAvailable() != true);
+          // Sample accelerometer
+          float quatI,quatJ,quatK,quatReal;
 
-        readData(&accX,&accY,&accZ,&gyroX,&gyroY,&gyroZ,&magX,&magY,&magZ);
-    
-        samplingBuffer[samplingIndex].timestamp = micros();
-        samplingBuffer[samplingIndex].accX = accX;
-        samplingBuffer[samplingIndex].accY = accY;
-        samplingBuffer[samplingIndex].accZ = accZ;
-        samplingBuffer[samplingIndex].gyroX = gyroX;
-        samplingBuffer[samplingIndex].gyroY = gyroY;
-        samplingBuffer[samplingIndex].gyroZ = gyroZ;
-        samplingBuffer[samplingIndex].magX = magX;
-        samplingBuffer[samplingIndex].magY = magY; 
-        samplingBuffer[samplingIndex].magZ = magZ;
-    
-        samplingIndex++;
-        lastSampleTime = millis();
-    
-        // Mark buffer as ready if threshold is met
-        if (samplingIndex >= TRANSMIT_THRESHOLD)
-        {
-        bufferReady = true;
-        }
-        
-   }
+          readData(&quatI,&quatJ,&quatK,&quatReal);
+      
+          samplingBuffer[samplingIndex].timestamp = micros();
+          samplingBuffer[samplingIndex].quatI = quatI;
+          samplingBuffer[samplingIndex].quatJ = quatJ;
+          samplingBuffer[samplingIndex].quatK = quatK;
+          samplingBuffer[samplingIndex].quatReal = quatReal;
+      
+          samplingIndex++;
+          lastSampleTime = millis();
+      
+          // Mark buffer as ready if threshold is met
+          if (samplingIndex >= TRANSMIT_THRESHOLD)
+          {
+          bufferReady = true;
+          }
+          
+    }
  }
  
  void transmitBufferData(int samples)
@@ -249,17 +250,12 @@ enum SampleType
    for (int i = 0; i < samples; i++)
    {
      String data = String::format(
-         "%lu,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n",
+         "%lu,%.2f,%.2f,%.2f,%.2f\n",
          transmitBuffer[i].timestamp,
-         transmitBuffer[i].accX,
-         transmitBuffer[i].accY,
-         transmitBuffer[i].accZ,
-         transmitBuffer[i].gyroX,
-         transmitBuffer[i].gyroY,
-         transmitBuffer[i].gyroZ,
-         transmitBuffer[i].magX,
-         transmitBuffer[i].magY,
-         transmitBuffer[i].magZ);
+         transmitBuffer[i].quatI,
+         transmitBuffer[i].quatJ,
+         transmitBuffer[i].quatK,
+         transmitBuffer[i].quatReal);
      client.write(((const uint8_t *)data.c_str()), data.length());
    }
    //Log.info("Buffer transmission complete.");
@@ -287,6 +283,8 @@ void changeState()
     return;
 }
  void buttonHandler(system_event_t event, int data){
+   sampleType = STRAIGHT;
+   Log.error("Straight");
    changeState();
    return;
  }
@@ -294,6 +292,7 @@ void changeState()
  void rightButtonHandler(){
     while(digitalRead(rightButton) == LOW); // Wait for button release
     sampleType = RIGHT;
+    Log.error("Right");
     changeState();
     return;
  }
@@ -301,6 +300,7 @@ void changeState()
  void leftButtonHandler(){
     while(digitalRead(leftButton) == LOW); // Wait for button release
     sampleType = LEFT;
+    Log.error("Left");
     changeState();
     return;
  }
@@ -308,23 +308,17 @@ void changeState()
  void breakButtonHandler(){
     while(digitalRead(breakButton) == LOW); // Wait for button release
     sampleType = BREAK;
+    Log.error("Break");
     changeState();
     return;
  }
 
- void readData(float *accX, float *accY, float *accZ, float *gyroX, float *gyroY, float *gyroZ, float *magX, float *magY, float *magZ){
+ void readData(float *quatI, float *quatJ, float *quatK, float *quatReal){
 
-    *accX = IMU.getAccelX();
-    *accY = IMU.getAccelY();
-    *accZ = IMU.getAccelZ();
-
-    *gyroX = IMU.getGyroX();
-    *gyroY = IMU.getGyroY();
-    *gyroZ = IMU.getGyroZ();
-
-    *magX = IMU.getMagX();
-    *magY = IMU.getMagY();
-    *magZ = IMU.getMagZ();
+    *quatI = IMU.getQuatI();
+    *quatJ = IMU.getQuatJ();
+    *quatK = IMU.getQuatK();
+    *quatReal = IMU.getQuatReal();
  }
 
 
