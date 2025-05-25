@@ -112,27 +112,11 @@ void extract_features(Sample *data1, Sample *data2, int16_t data_length, int16_t
 
     features[4] = (int16_t)iqr;
 
-    
-
     for(int i = 0; i < data_length*2; i++){
-        if(data[3][i] < 0){
-            sma_gyro += data[3][i]/-100;
-        }else{
-            sma_gyro += data[3][i]/100;
-        }
-        if(data[4][i] < 0){
-            sma_gyro += data[4][i]/-100;
-        }else{
-            sma_gyro += data[4][i]/100;
-        }
-        if(data[5][i] < 0){
-            sma_gyro += data[5][i]/-100;
-        }else{
-            sma_gyro += data[5][i]/100;
-        }
+        sma_gyro += abs(data[3][i])/100;
+        sma_gyro += abs(data[4][i])/100;
+        sma_gyro += abs(data[5][i])/100;   
     }
-
-    
 
     features[5] = (int16_t)sma_gyro; //sma_gyro
 

@@ -8,9 +8,9 @@
 
 // Include Particle Device OS APIs
 #include "Particle.h"
-// #include "Straight.h"
+#include "Straight.h"
 // #include "Break.h"
-#include "Left.h"
+// #include "Left.h"
 // #include "Right.h"
 #include "../../../random_forest_model.h"
 #include "Feature_extraction.h"
@@ -65,7 +65,7 @@ void loop() {
   // The core of your code will likely live here.
 
   int timestamp = millis();
-  extract_features(buffer1, buffer2, DATA_LENGTH, features, N_FEATURES);
+  // extract_features(buffer1, buffer2, DATA_LENGTH, features, N_FEATURES);
   Serial.println(features[0]);
   Serial.println(features[1]);
   Serial.println(features[2]);
@@ -98,12 +98,12 @@ void loop() {
 
   timestamp = millis();
 
-  features[0] = -2889;
-  features[1] = 6908;
-  features[2] = -4315;
-  features[3] = 9829;
-  features[4] = 6914;
-  features[5] = 30645;
+  features[0] = 4439;
+  features[1] = 1452;
+  features[2] = 640;
+  features[3] = 13687;
+  features[4] = 5418;
+  features[5] = 10496;
 
   prediction = random_forest_model_predict(features, N_FEATURES);
   Serial.print("Prediction time: ");
