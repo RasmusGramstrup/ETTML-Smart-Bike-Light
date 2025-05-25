@@ -1,0 +1,14 @@
+{
+    "extensions.ignoreRecommendations": true,
+    "C_Cpp.default.configurationProvider": "particle.particle-vscode-core",
+    "files.associations": {
+        "*.ino": "cpp",
+        "cstdlib": "cpp",
+        "random": "cpp",
+        "vector": "cpp",
+        "xstring": "cpp",
+        "xutility": "cpp"
+    },
+    "particle.targetPlatform": "p2",
+    "particle.firmwareVersion": "5.6.0"
+}

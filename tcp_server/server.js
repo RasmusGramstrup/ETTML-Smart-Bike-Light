@@ -75,7 +75,7 @@ net.createServer(function (socket) {
     const writer = fs.createWriteStream(outPath);
 
     // Write header for the CSV file
-    writer.write("timestamp,quatI,quatJ,quatK,quatReal\n");
+    writer.write("timestamp,accX,accY,accZ,gyroX,gyroY,gyroZ\n");
 
     socket.on('data', function (data) {
         // Handle plain text CSV data

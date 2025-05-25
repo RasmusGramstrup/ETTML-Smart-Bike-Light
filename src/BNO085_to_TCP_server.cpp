@@ -8,6 +8,8 @@
  * Modified from original code by Morten Opprud
  */
 
+
+
  #include "Particle.h"
  #include <Wire.h>
  #include "SparkFun_BNO080_Arduino_Library.h"
@@ -19,17 +21,17 @@
 
  SYSTEM_THREAD(ENABLED);
  SYSTEM_MODE(SEMI_AUTOMATIC);
- 
+
  SerialLogHandler logHandler;
  
  // Constants
  const unsigned long MAX_RECORDING_LENGTH_MS = 5000; // 5000; max 5 seconds
- const int SAMPLING_INTERVAL_MS = 3;                 // Sampling interval in milliseconds
+ const int SAMPLING_INTERVAL_MS = 5;                 // Sampling interval in milliseconds
  const int BUFFER_SIZE = 25;                          // Buffer size
  const int TRANSMIT_THRESHOLD = 20;                   // Transmit buffer after 20 samples
  
  // Server configuration
- IPAddress serverAddr = IPAddress(192, 168, 73, 254);
+ IPAddress serverAddr = IPAddress(192, 168, 208, 254);
  int serverPort = 7123;
  
  TCPClient client;
@@ -37,8 +39,8 @@
  // Buffers for double buffering
  struct Sample
  {
-   uint32_t timestamp; // Timestamp in microseconds
-   float quatI, quatJ, quatK, quatReal;      // BNO085 data
+   uint32_t timestamp; // Timestamp in milliseconds
+   float accX,accY,accZ,gyroX,gyroY,gyroZ;      // BNO085 data
  }; 
  
  Sample buffer1[BUFFER_SIZE];
@@ -82,7 +84,7 @@ enum SampleType
  
  #define LED_PIN D7
  
- void readData(float *quatI, float *quatJ, float *quatK, float *quatReal);
+ void readData(float *accX, float *accY, float *accZ, float *gyroX, float *gyroY, float *gyroZ);
 
  void changeState();
  void rightButtonHandler();
@@ -105,6 +107,11 @@ enum SampleType
    Particle.connect();
    System.on(button_click, buttonHandler);
 
+   Serial.begin(9600);
+   Serial.println();
+
+   Serial.println("BNO080 Read Example");
+
    interrupts();
 
    Wire.begin();
@@ -115,13 +122,11 @@ enum SampleType
     System.reset();
    }
  
-   Wire.setClock(400000); //Increase I2C data rate to 400kHz
+    Wire.setClock(400000); //Increase I2C data rate to 400kHz
  
-   IMU.enableRotationVector(SAMPLING_INTERVAL_MS); //Send data update every 3ms 333Hz
+    IMU.enableAccelerometer(SAMPLING_INTERVAL_MS); //Send data update every 5ms / 200Hz
+    IMU.enableGyro(SAMPLING_INTERVAL_MS);         //Send data update every 5ms / 200Hz
 
-  //  IMU.enableAccelerometer(10); //Send data update every 10ms / 100Hz
-  //  IMU.enableGyro(10);         //Send data update every 10ms / 100Hz
-  //  IMU.enableMagnetometer(10); //Send data update every 10ms / 100Hz
   
    pinMode(LED_PIN, OUTPUT);
    digitalWrite(LED_PIN, LOW);
@@ -217,16 +222,18 @@ enum SampleType
     {
           while(IMU.dataAvailable() != true);
           // Sample accelerometer
-          float quatI,quatJ,quatK,quatReal;
+          float accX,accY,accZ,gyroX,gyroY,gyroZ;
 
-          readData(&quatI,&quatJ,&quatK,&quatReal);
+          readData(&accX,&accY,&accZ,&gyroX,&gyroY,&gyroZ);
       
-          samplingBuffer[samplingIndex].timestamp = micros();
-          samplingBuffer[samplingIndex].quatI = quatI;
-          samplingBuffer[samplingIndex].quatJ = quatJ;
-          samplingBuffer[samplingIndex].quatK = quatK;
-          samplingBuffer[samplingIndex].quatReal = quatReal;
-      
+          samplingBuffer[samplingIndex].timestamp = millis() - recordingStart;
+          samplingBuffer[samplingIndex].accX = accX;
+          samplingBuffer[samplingIndex].accY = accY;
+          samplingBuffer[samplingIndex].accZ = accZ;
+          samplingBuffer[samplingIndex].gyroX = gyroX;
+          samplingBuffer[samplingIndex].gyroY = gyroY;
+          samplingBuffer[samplingIndex].gyroZ = gyroZ;
+        
           samplingIndex++;
           lastSampleTime = millis();
       
@@ -249,13 +256,15 @@ enum SampleType
    //Log.info("Transmitting %d samples...", samples);
    for (int i = 0; i < samples; i++)
    {
-     String data = String::format(
-         "%lu,%.2f,%.2f,%.2f,%.2f\n",
-         transmitBuffer[i].timestamp,
-         transmitBuffer[i].quatI,
-         transmitBuffer[i].quatJ,
-         transmitBuffer[i].quatK,
-         transmitBuffer[i].quatReal);
+    String data = String::format(
+      "%lu,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n",
+      transmitBuffer[i].timestamp,
+      transmitBuffer[i].accX,
+      transmitBuffer[i].accY,
+      transmitBuffer[i].accZ,
+      transmitBuffer[i].gyroX,
+      transmitBuffer[i].gyroY,
+      transmitBuffer[i].gyroZ);
      client.write(((const uint8_t *)data.c_str()), data.length());
    }
    //Log.info("Buffer transmission complete.");
@@ -313,12 +322,14 @@ void changeState()
     return;
  }
 
- void readData(float *quatI, float *quatJ, float *quatK, float *quatReal){
+ void readData(float *accX, float *accY, float *accZ, float *gyroX, float *gyroY, float *gyroZ){
 
-    *quatI = IMU.getQuatI();
-    *quatJ = IMU.getQuatJ();
-    *quatK = IMU.getQuatK();
-    *quatReal = IMU.getQuatReal();
+    *accX = IMU.getAccelX();
+    *accY = IMU.getAccelY();
+    *accZ = IMU.getAccelZ();
+
+    *gyroX = IMU.getGyroX();
+    *gyroY = IMU.getGyroY();
+    *gyroZ = IMU.getGyroZ();
  }
-
 
