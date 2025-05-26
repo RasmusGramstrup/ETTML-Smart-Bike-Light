@@ -34,47 +34,47 @@ void extract_features(Sample *data1, Sample *data2, int16_t data_length, int16_t
     // Example placeholder logic (to be replaced with actual feature extraction):
     for(int i = 0; i < data_length; i++){
         std_accX = (data1->accX - accMin) / (accMax - accMin);
-        data[0][i] = (int16_t)(std_accX * (65535));
+        data[0][i] = (int16_t)(std_accX * (32767 - -32768) + -32768);
 
         std_accY = (data1->accY - accMin) / (accMax - accMin);
-        data[1][i] = (int16_t)(std_accY * (65535));
+        data[1][i] = (int16_t)(std_accY * (32767 - -32768) + -32768);
         
         std_accZ = (data1->accZ - accMin) / (accMax - accMin);
-        data[2][i] = (int16_t)(std_accZ * (65535));
+        data[2][i] = (int16_t)(std_accZ * (32767 - -32768) + -32768);
 
         std_gyroX = (data1->gyroX - accMin) / (accMax - accMin);
-        data[3][i] = (int16_t)(std_gyroX * (65535));
+        data[3][i] = (int16_t)(std_gyroX * (32767 - -32768) + -32768);
 
         std_gyroY = (data1->gyroY - accMin) / (accMax - accMin);
-        data[4][i] = (int16_t)(std_gyroY * (65535));
+        data[4][i] = (int16_t)(std_gyroY * (32767 - -32768) + -32768);
         
         std_gyroZ = (data1->gyroZ - accMin) / (accMax - accMin);
-        data[5][i] = (int16_t)(std_gyroZ * (65535));
+        data[5][i] = (int16_t)(std_gyroZ * (32767 - -32768) + -32768);
 
         std_accX = (data2->accX - accMin) / (accMax - accMin);
-        data[0][i+data_length] = (int16_t)(std_accX * (65535));
+        data[0][i+data_length] = (int16_t)(std_accX * (32767 - -32768) + -32768);
 
         std_accY = (data2->accY - accMin) / (accMax - accMin);
-        data[1][i+data_length] = (int16_t)(std_accY * (65535));
+        data[1][i+data_length] = (int16_t)(std_accY * (32767 - -32768) + -32768);
         
         std_accZ = (data2->accZ - accMin) / (accMax - accMin);
-        data[2][i+data_length] = (int16_t)(std_accZ * (65535));
+        data[2][i+data_length] = (int16_t)(std_accZ * (32767 - -32768) + -32768);
 
         std_gyroX = (data2->gyroX - accMin) / (accMax - accMin);
-        data[3][i+data_length] = (int16_t)(std_gyroX * (65535));
+        data[3][i+data_length] = (int16_t)(std_gyroX * (32767 - -32768) + -32768);
 
         std_gyroY = (data2->gyroY - accMin) / (accMax - accMin);
-        data[4][i+data_length] = (int16_t)(std_gyroY * (65535));
+        data[4][i+data_length] = (int16_t)(std_gyroY * (32767 - -32768) + -32768);
         
         std_gyroZ = (data2->gyroZ - accMin) / (accMax - accMin);
-        data[5][i+data_length] = (int16_t)(std_gyroZ * (65535));
+        data[5][i+data_length] = (int16_t)(std_gyroZ * (32767 - -32768) + -32768);
     }
     
     //features
 
     double x_mean = 0, y_mean = 0, z_mean = 0, sma_gyro = 0;
     double q1, q3, iqr;
-    int16_t gyroX_max = 0;
+    int16_t xg_max = 0;
 
     for(int i = 0; i < data_length*2; i++){
         x_mean += data[0][i]; // xa_mean
@@ -87,12 +87,12 @@ void extract_features(Sample *data1, Sample *data2, int16_t data_length, int16_t
     features[2] = (int16_t)(z_mean / (data_length*2));      //zg_mean
 
     for(int i = 0; i < data_length*2; i++){
-        if (data[3][i] > gyroX_max){
-            gyroX_max = data[3][i];
+        if (data[3][i] > xg_max){
+            xg_max = data[3][i];
         }
     }
 
-    features[3] = gyroX_max;                                 //xg_max
+    features[3] = xg_max;                                 //xg_max
     
     #if 0
 
